@@ -82,7 +82,7 @@
 @end
 
 #pragma mark - WPFPopViewController
-@interface WPFPopViewController () <UINavigationControllerDelegate>
+@interface WPFPopViewController () <UINavigationControllerDelegate, UIGestureRecognizerDelegate>
 
 @property (nonatomic, strong)UIView *backgroundView;
 @property (nonatomic, strong)UIImageView *contentView;
@@ -147,7 +147,14 @@ const CGFloat kWPFPopAnimationTime = 0.3;
         viewController.view.backgroundColor = [UIColor clearColor];
     }
     self.contentView.image = viewController.popImage;
+    
+    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(on_tap:)];
+    tap .delegate = self;
+    [self.view addGestureRecognizer:tap];
 
+    UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(on_pan:)];
+    pan.delegate = self;
+    [_contentView addGestureRecognizer:pan];
 }
 
 - (void)didReceiveMemoryWarning {
@@ -235,6 +242,21 @@ const CGFloat kWPFPopAnimationTime = 0.3;
 }
 
 
+- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
+    if (self.popBar.hidden) {
+        return NO;
+    }
+    
+    if ([gestureRecognizer isKindOfClass:[UITapGestureRecognizer class]]) {
+        CGPoint p = [gestureRecognizer locationInView:self.view];
+        return !CGRectContainsPoint(_contentView.frame, p);
+        
+    }else {
+        return YES;
+    }
+    
+}
+
 #pragma mark Private API
 - (void)p_contentSizeToFit:(UIViewController *)controller {
     if (controller == nil) {
@@ -265,6 +287,20 @@ const CGFloat kWPFPopAnimationTime = 0.3;
 
 - (void)on_close:(id)sender {
     [self.internalNavigationController.topViewController dismissPopControllerAnimated:YES];
+}
+
+- (void)on_tap:(UITapGestureRecognizer *)tap {
+    [self.internalNavigationController.topViewController dismissPopControllerAnimated:YES];
+}
+
+- (void)on_pan:(UIPanGestureRecognizer *)pan {
+    CGPoint velocity = [pan velocityInView:_contentView];
+    if (pan.state == UIGestureRecognizerStateEnded) {
+        if (velocity.y > 15) {
+            [self.internalNavigationController.topViewController dismissPopControllerAnimated:YES];
+        }
+        
+    }
 }
 
 @end
