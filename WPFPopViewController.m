@@ -65,7 +65,19 @@
 
 
 #pragma mark - WPFPopNavigationController
+@protocol WPFPopNavigationControllerDelegate <NSObject>
+
+- (void)navigationController:(UINavigationController *)navigationController pushViewController:(UIViewController *)viewController
+                    animated:(BOOL)animated;
+
+- (void)navigationController:(UINavigationController *)navigationController popViewController:(UIViewController *)viewController
+                    animated:(BOOL)animated;
+
+@end
+
 @interface WPFPopNavigationController : UINavigationController
+
+@property (nonatomic, weak)id<WPFPopNavigationControllerDelegate> pushDelegate;
 
 @end
 
@@ -79,15 +91,41 @@
     [super setNavigationBarHidden:YES animated:animated];
 }
 
+- (void)pushViewController:(UIViewController *)viewController animated:(BOOL)animated {
+    [super pushViewController:viewController animated:animated];
+    
+//    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        if ([self.pushDelegate respondsToSelector:@selector(navigationController:pushViewController:animated:)]) {
+            [self.pushDelegate navigationController:self pushViewController:viewController animated:animated];
+        }
+//    });
+
+}
+
+- (UIViewController *)popViewControllerAnimated:(BOOL)animated {
+    UIViewController *controller = [super popViewControllerAnimated:animated];
+    
+
+    
+//    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        if ([self.pushDelegate respondsToSelector:@selector(navigationController:popViewController:animated:)]) {
+            [self.pushDelegate navigationController:self popViewController:controller animated:animated];
+        }
+//    });
+    
+    return controller;
+}
+
 @end
 
+
 #pragma mark - WPFPopViewController
-@interface WPFPopViewController () <UINavigationControllerDelegate, UIGestureRecognizerDelegate>
+@interface WPFPopViewController () <UINavigationControllerDelegate, UIGestureRecognizerDelegate, WPFPopNavigationControllerDelegate>
 
 @property (nonatomic, strong)UIView *backgroundView;
 @property (nonatomic, strong)UIImageView *contentView;
 @property (nonatomic, strong)WPFPopBar *popBar;
-@property (nonatomic, strong)UINavigationController *internalNavigationController;
+@property (nonatomic, strong)WPFPopNavigationController *internalNavigationController;
 
 @property (nonatomic, weak)UIViewController *owner;
 
@@ -106,6 +144,7 @@ const CGFloat kWPFPopAnimationTime = 0.3;
         _internalNavigationController = [[WPFPopNavigationController alloc] initWithRootViewController:controller];
         _internalNavigationController.delegate = self;
         [_internalNavigationController setNavigationBarHidden:YES animated:NO];
+        _internalNavigationController.pushDelegate = self;
         
         controller.popViewController = self;
     }
@@ -199,7 +238,7 @@ const CGFloat kWPFPopAnimationTime = 0.3;
     
 }
 
-- (void)hideAnimation {
+- (void)hideAnimationCompletion:(void (^)(BOOL finished))completion {
     [UIView animateWithDuration:kWPFPopAnimationTime
                           delay:0.
                         options:UIViewAnimationOptionBeginFromCurrentState|UIViewAnimationOptionCurveEaseIn
@@ -210,27 +249,31 @@ const CGFloat kWPFPopAnimationTime = 0.3;
 
                      } completion:^(BOOL finished) {
                          [self.view removeFromSuperview];
+                         if (completion) {
+                             completion(finished);
+                         }
                      }];
 }
 
 - (void)navigationController:(UINavigationController *)navigationController
       willShowViewController:(UIViewController *)viewController
                     animated:(BOOL)animated {
-    if (animated) {
-        [UIView animateKeyframesWithDuration:kWPFPopAnimationTime delay:0
-                                     options:UIViewKeyframeAnimationOptionBeginFromCurrentState
-                                  animations:^{
-                                      self.popBar.hidden = viewController.popBarHidden;
-                                      [self p_contentSizeToFit:viewController];
-                                      self.contentView.center = CGPointMake(CGRectGetMidX(self.view.bounds),
-                                                                            CGRectGetHeight(self.view.bounds) - CGRectGetMidY(self.contentView.bounds));
-                                  } completion:nil];
-    }else {
-        self.popBar.hidden = viewController.popBarHidden;
-        [self p_contentSizeToFit:viewController];
-        self.contentView.center = CGPointMake(CGRectGetMidX(self.view.bounds),
-                                              CGRectGetHeight(self.view.bounds) - CGRectGetMidY(self.contentView.bounds));
-    }
+    
+
+
+    
+//    if (animated) {
+//        [UIView animateWithDuration:kWPFPopAnimationTime delay:0
+//                                     options:UIViewAnimationOptionBeginFromCurrentState
+//                                  animations:^{
+//                                      self.popBar.hidden = viewController.popBarHidden;
+//                                  } completion:nil];
+//    }else {
+//        self.popBar.hidden = viewController.popBarHidden;
+////        [self p_contentSizeToFit:viewController];
+////        self.contentView.center = CGPointMake(CGRectGetMidX(self.view.bounds),
+////                                              CGRectGetHeight(self.view.bounds) - CGRectGetMidY(self.contentView.bounds));
+//    }
     
     self.popBar.titleLabel.text = viewController.title;
     if (viewController.popBarHidden == NO) {
@@ -238,9 +281,7 @@ const CGFloat kWPFPopAnimationTime = 0.3;
     }
     self.contentView.image = viewController.popImage;
     
-    viewController.popViewController = self;
 }
-
 
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
     if (self.popBar.hidden) {
@@ -255,6 +296,28 @@ const CGFloat kWPFPopAnimationTime = 0.3;
         return YES;
     }
     
+}
+
+- (void)navigationController:(UINavigationController *)navigationController
+           pushViewController:(UIViewController *)viewController
+                    animated:(BOOL)animated {
+    [self p_controllerWillShow:viewController animated:animated];
+    
+    viewController.popViewController = self;
+
+}
+
+- (void)navigationController:(UINavigationController *)navigationController
+           popViewController:(UIViewController *)viewController
+                    animated:(BOOL)animated {
+    UIViewController *controller = navigationController.topViewController;
+//    [self p_contentSizeToFit:controller];
+//    self.contentView.center = CGPointMake(CGRectGetMidX(self.view.bounds),
+//                                          CGRectGetHeight(self.view.bounds) - CGRectGetMidY(self.contentView.bounds));
+    [self p_controllerWillShow:controller animated:animated];
+    
+    viewController.popViewController = nil;
+
 }
 
 #pragma mark Private API
@@ -282,6 +345,24 @@ const CGFloat kWPFPopAnimationTime = 0.3;
         self.internalNavigationController.view.frame = CGRectMake(0, WPFPopBarHeight,
                                                                   CGRectGetWidth(self.contentView.bounds),
                                                                   CGRectGetHeight(self.contentView.bounds) - WPFPopBarHeight);
+    }
+}
+
+- (void)p_controllerWillShow:(UIViewController *)viewController animated:(BOOL)animated{
+    if (animated) {
+        [UIView animateWithDuration:kWPFPopAnimationTime delay:0
+                            options:UIViewAnimationOptionBeginFromCurrentState
+                         animations:^{
+                             self.popBar.hidden = viewController.popBarHidden;
+                             [self p_contentSizeToFit:viewController];
+                             self.contentView.center = CGPointMake(CGRectGetMidX(self.view.bounds),
+                                                                   CGRectGetHeight(self.view.bounds) - CGRectGetMidY(self.contentView.bounds));
+                         } completion:nil];
+    }else {
+        self.popBar.hidden = viewController.popBarHidden;
+        [self p_contentSizeToFit:viewController];
+        self.contentView.center = CGPointMake(CGRectGetMidX(self.view.bounds),
+                                              CGRectGetHeight(self.view.bounds) - CGRectGetMidY(self.contentView.bounds));
     }
 }
 
@@ -334,7 +415,23 @@ static void *presentingPopViewControllerKey = &presentingPopViewControllerKey;
 
 @end
 
+
+void *WPFPopViewControllerDelegate = &WPFPopViewControllerDelegate;
 @implementation UIViewController (WPFPopViewController)
+
+@dynamic popUpDelegate;
+
+- (id<WPFPopViewControllerDelegate>)popUpDelegate {
+    return objc_getAssociatedObject(self, WPFPopViewControllerDelegate);
+}
+
+- (void)setPopUpDelegate:(id<WPFPopViewControllerDelegate>)popUpDelegate {
+    if ([popUpDelegate conformsToProtocol:@protocol(WPFPopViewControllerDelegate)]) {
+        objc_setAssociatedObject(self, WPFPopViewControllerDelegate, popUpDelegate, OBJC_ASSOCIATION_ASSIGN);
+    }else {
+        objc_setAssociatedObject(self, WPFPopViewControllerDelegate, nil, OBJC_ASSOCIATION_ASSIGN);
+    }
+}
 
 - (WPFPopViewController *)popViewController {
     return objc_getAssociatedObject(self, WPFPopViewControllerOwnerKey);
@@ -373,14 +470,25 @@ static void *presentingPopViewControllerKey = &presentingPopViewControllerKey;
     WPFPopViewController *cardController = self.popViewController;
     if (cardController) {
         if (flag) {
-            [cardController hideAnimation];
+            [cardController hideAnimationCompletion:^(BOOL finished) {
+//                if ([self.popUpDelegate respondsToSelector:@selector(popViewController:dismissWithAnimated:)]) {
+//                    [self.popUpDelegate popViewController:self dismissWithAnimated:flag];
+//                }
+            }];
         }else {
             [cardController.view removeFromSuperview];
+//            if ([self.popUpDelegate respondsToSelector:@selector(popViewController:dismissWithAnimated:)]) {
+//                [self.popUpDelegate popViewController:self dismissWithAnimated:flag];
+//            }
         }
         
         [cardController.owner setPresentingPopViewController:nil];
         cardController.owner = nil;
         
+    }
+
+    if ([self.popUpDelegate respondsToSelector:@selector(popViewController:dismissWithAnimated:)]) {
+        [self.popUpDelegate popViewController:self dismissWithAnimated:flag];
     }
     
     self.popViewController = nil;

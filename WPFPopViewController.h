@@ -8,14 +8,24 @@
 
 #import <UIKit/UIKit.h>
 
+extern const CGFloat WPFPopBarHeight;
+
 @interface WPFPopViewController : UIViewController
 
 //@property (nonatomic, assign)BOOL popBarHidden;
 
 @end
 
+@protocol WPFPopViewControllerDelegate <NSObject>
+
+- (void)popViewController:(UIViewController *)controller dismissWithAnimated:(BOOL)animated;
+
+@end
+
 
 @interface UIViewController (WPFPopViewController)
+
+@property (nonatomic, weak)id<WPFPopViewControllerDelegate> popUpDelegate;
 
 - (WPFPopViewController *)popViewController;
 
@@ -28,4 +38,3 @@
 - (UIImage *)popImage;
 - (BOOL)popBarHidden;
 @end
-
