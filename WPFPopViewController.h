@@ -37,4 +37,6 @@ extern const CGFloat WPFPopBarHeight;
 - (CGSize)popSize;
 - (UIImage *)popImage;
 - (BOOL)popBarHidden;
+- (UIColor *)popBackgroundColor;
+
 @end

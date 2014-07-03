@@ -157,7 +157,7 @@ const CGFloat kWPFPopAnimationTime = 0.3;
     self.view.backgroundColor = [UIColor clearColor];
     
     _backgroundView = [[UIView alloc] initWithFrame:CGRectZero];
-    _backgroundView.backgroundColor = [UIColor colorWithWhite:0 alpha:.6];
+    _backgroundView.backgroundColor = [_internalNavigationController.topViewController popBackgroundColor];
     [self.view addSubview:_backgroundView];
     
     _contentView = [[UIImageView alloc] initWithFrame:CGRectZero];
@@ -259,22 +259,6 @@ const CGFloat kWPFPopAnimationTime = 0.3;
       willShowViewController:(UIViewController *)viewController
                     animated:(BOOL)animated {
     
-
-
-    
-//    if (animated) {
-//        [UIView animateWithDuration:kWPFPopAnimationTime delay:0
-//                                     options:UIViewAnimationOptionBeginFromCurrentState
-//                                  animations:^{
-//                                      self.popBar.hidden = viewController.popBarHidden;
-//                                  } completion:nil];
-//    }else {
-//        self.popBar.hidden = viewController.popBarHidden;
-////        [self p_contentSizeToFit:viewController];
-////        self.contentView.center = CGPointMake(CGRectGetMidX(self.view.bounds),
-////                                              CGRectGetHeight(self.view.bounds) - CGRectGetMidY(self.contentView.bounds));
-//    }
-    
     self.popBar.titleLabel.text = viewController.title;
     if (viewController.popBarHidden == NO) {
         viewController.view.backgroundColor = [UIColor clearColor];        
@@ -357,12 +341,16 @@ const CGFloat kWPFPopAnimationTime = 0.3;
                              [self p_contentSizeToFit:viewController];
                              self.contentView.center = CGPointMake(CGRectGetMidX(self.view.bounds),
                                                                    CGRectGetHeight(self.view.bounds) - CGRectGetMidY(self.contentView.bounds));
+                             _backgroundView.backgroundColor = [_internalNavigationController.topViewController popBackgroundColor];
+
                          } completion:nil];
     }else {
         self.popBar.hidden = viewController.popBarHidden;
         [self p_contentSizeToFit:viewController];
         self.contentView.center = CGPointMake(CGRectGetMidX(self.view.bounds),
                                               CGRectGetHeight(self.view.bounds) - CGRectGetMidY(self.contentView.bounds));
+        _backgroundView.backgroundColor = [_internalNavigationController.topViewController popBackgroundColor];
+
     }
 }
 
@@ -505,6 +493,10 @@ void *WPFPopViewControllerDelegate = &WPFPopViewControllerDelegate;
 
 - (BOOL)popBarHidden {
     return NO;
+}
+
+- (UIColor *)popBackgroundColor {
+    return [UIColor colorWithWhite:0 alpha:.6];
 }
 
 @end
